@@ -9,60 +9,97 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <style>
-        body { margin: 0; padding: 0; height: 100vh; font-family: 'Segoe UI', Roboto, sans-serif; overflow: hidden; background: #000; }
+        :root {
+            --primary: #ed1c24;
+            --primary-dark: #c11218;
+            --bg-dark: #0f0f0f;
+            --glass: rgba(255, 255, 255, 0.95);
+        }
+
+        body { margin: 0; padding: 0; height: 100vh; font-family: 'Inter', 'Segoe UI', sans-serif; overflow: hidden; background: var(--bg-dark); }
         #panoCont { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
         .m-panorama .m-panorama-scene-caption { display: none !important; }
 
+        /* NOVÉ MODERNÍ MENU */
         .overlay-screen {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: linear-gradient(135deg, rgba(20,20,20,0.96) 0%, rgba(50,50,50,0.92) 100%);
+            background: radial-gradient(circle at center, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0.8) 100%),
+                        url('https://api.mapy.cz/v1/maptiles/basic/256/8/140/88?apikey=f0v1yILk7F_95Aa_nLPp0r2CUEfFosLnbxoUPZIDIAQ'); /* Pozadí s mapou */
+            background-size: cover;
             z-index: 10000; display: flex; justify-content: center; align-items: center; color: white;
+            backdrop-filter: blur(8px);
         }
+
         .card {
-            background: white; color: #222; padding: 35px; border-radius: 30px;
-            width: 420px; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+            background: var(--glass); color: #1a1a1a; padding: 40px; border-radius: 24px;
+            width: 450px; text-align: center; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255,255,255,0.3);
         }
-        .card h1 { color: #ed1c24; margin: 0 0 20px 0; font-size: 2.2em; text-transform: uppercase; }
+
+        .card h1 { 
+            color: var(--primary); margin: 0 0 10px 0; font-size: 2.5em; 
+            font-weight: 900; letter-spacing: -1px; text-transform: uppercase;
+        }
+
+        .subtitle { color: #666; font-size: 0.9em; margin-bottom: 30px; font-weight: 500; }
         
-        .menu-item { margin-bottom: 20px; text-align: left; }
-        .menu-item label { display: block; font-weight: 800; margin-bottom: 8px; font-size: 0.7em; color: #999; text-transform: uppercase; }
-        .menu-item input[type="text"], .menu-item input[type="number"], .menu-item select { 
-            width: 100%; padding: 12px; border-radius: 10px; border: 2px solid #eee; 
-            font-size: 0.95em; outline: none; box-sizing: border-box; background: #f9f9f9;
+        .menu-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
+        .menu-item { text-align: left; }
+        .full-width { grid-column: span 2; }
+
+        .menu-item label { 
+            display: block; font-weight: 700; margin-bottom: 6px; 
+            font-size: 0.75em; color: #444; text-transform: uppercase; letter-spacing: 0.5px;
         }
+
+        input[type="text"], input[type="number"], select { 
+            width: 100%; padding: 12px 15px; border-radius: 12px; border: 2px solid #e2e8f0; 
+            font-size: 0.95em; outline: none; box-sizing: border-box; background: #f8fafc;
+            transition: border-color 0.2s; font-family: inherit;
+        }
+
+        input:focus, select:focus { border-color: var(--primary); }
 
         /* SLIDER STYLE */
-        .time-controls { display: flex; align-items: center; gap: 15px; background: #f9f9f9; padding: 10px; border-radius: 10px; border: 2px solid #eee; }
-        #timeSlider { flex: 1; accent-color: #ed1c24; cursor: pointer; }
-        #timeDisplay { font-weight: 800; color: #ed1c24; min-width: 60px; text-align: center; }
-        .inf-btn { background: #eee; color: #333; padding: 8px 12px; border-radius: 8px; font-size: 0.8em; font-weight: bold; border: 1px solid #ccc; cursor: pointer; transition: 0.2s; }
-        .inf-btn.active { background: #ed1c24; color: white; border-color: #ed1c24; }
+        .time-controls { 
+            display: flex; align-items: center; gap: 12px; background: #f1f5f9; 
+            padding: 8px 12px; border-radius: 12px; border: 2px solid #e2e8f0; 
+        }
+        #timeSlider { flex: 1; accent-color: var(--primary); cursor: pointer; }
+        #timeDisplay { font-weight: 800; color: var(--primary); min-width: 45px; text-align: center; font-size: 1.1em;}
+        
+        .inf-btn { 
+            background: white; color: #444; width: 35px; height: 35px; border-radius: 8px; 
+            font-size: 1.2em; border: 1px solid #cbd5e1; cursor: pointer; transition: 0.2s; 
+            display: flex; align-items: center; justify-content: center;
+        }
+        .inf-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
 
-        .challenge-box { background: #f0f0f0; padding: 10px; border-radius: 10px; margin: 15px 0; border: 2px dashed #ccc; }
-        #challenge-output { font-family: monospace; font-size: 0.8em; word-break: break-all; user-select: all; color: #444; }
-
+        /* UI PRVKY PŘI HŘE */
         #ui-top { 
             position: absolute; top: 20px; left: 50%; transform: translateX(-50%); z-index: 1000; 
-            background: rgba(0, 0, 0, 0.85); color: white; padding: 12px 40px; border-radius: 100px; 
-            display: none; gap: 40px; align-items: center; backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.2);
+            background: rgba(0, 0, 0, 0.8); color: white; padding: 10px 30px; border-radius: 50px; 
+            display: none; gap: 30px; align-items: center; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1);
         }
-        .stat-value { font-size: 1.4em; font-weight: 800; display: block; text-align: center; }
-        #timer-val { color: #ed1c24; }
+        .stat-value { font-size: 1.2em; font-weight: 800; display: block; }
+        #timer-val { color: var(--primary); }
 
         #map-container { position: absolute; bottom: 25px; right: 25px; z-index: 1000; display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
-        #guessMap { width: 320px; height: 240px; border: 6px solid white; box-shadow: 0 15px 45px rgba(0,0,0,0.5); border-radius: 24px; transition: 0.3s; }
-        #guessMap:hover { width: 550px; height: 380px; }
+        #guessMap { width: 300px; height: 220px; border: 5px solid white; box-shadow: 0 10px 30px rgba(0,0,0,0.4); border-radius: 20px; transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        #guessMap:hover { width: 500px; height: 350px; }
         
-        button { cursor: pointer; border: none; border-radius: 12px; font-weight: 800; color: white; transition: 0.2s; text-transform: uppercase; }
-        .btn-main { background: #ed1c24; width: 100%; padding: 16px; font-size: 1.1em; }
-        .btn-main:hover { background: #d1191f; transform: translateY(-2px); }
-        .btn-next { background: #28a745; width: 100%; padding: 16px; display: none; }
+        button { cursor: pointer; border: none; border-radius: 14px; font-weight: 800; transition: 0.2s; text-transform: uppercase; letter-spacing: 1px; }
+        .btn-main { background: var(--primary); color: white; width: 100%; padding: 18px; font-size: 1.1em; box-shadow: 0 4px 15px rgba(237, 28, 36, 0.3); }
+        .btn-main:hover { background: var(--primary-dark); transform: translateY(-2px); box-shadow: 0 6px 20px rgba(237, 28, 36, 0.4); }
+        .btn-next { background: #10b981; color: white; width: 100%; padding: 18px; display: none; }
 
-        #status-msg { background: white; color: #222; padding: 15px; border-radius: 15px; display: none; width: 100%; box-sizing: border-box; border-left: 6px solid #ed1c24; text-align: left; }
+        .challenge-box { background: #f8fafc; padding: 12px; border-radius: 12px; margin: 15px 0; border: 2px dashed #cbd5e1; }
+        #challenge-output { font-family: 'Courier New', monospace; font-size: 0.75em; word-break: break-all; color: #64748b; }
 
         .loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; display: none; flex-direction: column; justify-content: center; align-items: center; color: white; z-index: 9999; }
-        .spinner { width: 50px; height: 50px; border: 5px solid #222; border-top-color: #ed1c24; border-radius: 50%; animation: spin 0.8s infinite linear; }
+        .spinner { width: 40px; height: 40px; border: 4px solid #333; border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s infinite linear; }
         @keyframes spin { to { transform: rotate(360deg); } }
+        #status-msg { background: white; color: #1a1a1a; padding: 15px; border-radius: 15px; display: none; width: 100%; box-sizing: border-box; border-left: 6px solid var(--primary); text-align: left; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
     </style>
 </head>
 <body>
@@ -70,72 +107,86 @@
     <div id="menu" class="overlay-screen">
         <div class="card">
             <h1>GeoGuessr ČR</h1>
-            <div class="menu-item">
-                <label>Tvé jméno</label>
-                <input type="text" id="playerName" placeholder="Zadej jméno...">
-            </div>
-            <div style="display: flex; gap: 10px;">
-                <div class="menu-item" style="flex: 1;">
-                    <label>Kola</label>
-                    <input type="number" id="cfgRounds" value="5" min="1" max="10">
+            <div class="subtitle">Poznej krásy České republiky</div>
+            
+            <div class="menu-grid">
+                <div class="menu-item full-width">
+                    <label>Tvé jméno</label>
+                    <input type="text" id="playerName" placeholder="Anonymní cestovatel">
                 </div>
-                <div class="menu-item" style="flex: 1;">
+                
+                <div class="menu-item">
+                    <label>Mapa</label>
+                    <select id="cfgMap">
+                        <option value="all">Celá ČR</option>
+                        <option value="cities">Velká města</option>
+                        <option value="castles">Hrady a zámky</option>
+                    </select>
+                </div>
+
+                <div class="menu-item">
                     <label>Pohyb</label>
                     <select id="cfgMove">
                         <option value="1">Povolen</option>
                         <option value="0">Zakázán</option>
                     </select>
                 </div>
-            </div>
-            
-            <div class="menu-item">
-                <label>Časový limit</label>
-                <div class="time-controls">
-                    <input type="range" id="timeSlider" min="10" max="300" step="5" value="60">
-                    <span id="timeDisplay">60s</span>
-                    <button class="inf-btn" id="infToggle">∞</button>
+
+                <div class="menu-item">
+                    <label>Kola</label>
+                    <input type="number" id="cfgRounds" value="5" min="1" max="10">
+                </div>
+
+                <div class="menu-item">
+                    <label>Čas (s)</label>
+                    <div class="time-controls">
+                        <input type="range" id="timeSlider" min="10" max="300" step="5" value="60">
+                        <span id="timeDisplay">60</span>
+                        <button class="inf-btn" id="infToggle">∞</button>
+                    </div>
+                </div>
+
+                <div class="menu-item full-width">
+                    <label>Kód výzvy</label>
+                    <input type="text" id="cfgChallenge" placeholder="Vlož kód od kamaráda...">
                 </div>
             </div>
 
-            <div class="menu-item">
-                <label>Kód výzvy (volitelné)</label>
-                <input type="text" id="cfgChallenge" placeholder="Vlož kód od kamaráda...">
-            </div>
-            <button class="btn-main" onclick="startGame()">Spustit hru</button>
+            <button class="btn-main" onclick="startGame()">Hrát hru</button>
         </div>
     </div>
 
     <div id="end-screen" class="overlay-screen" style="display: none;">
         <div class="card">
-            <h2 id="end-player-name">KONEC HRY</h2>
-            <div style="font-size: 3.5em; font-weight: 900; color: #ed1c24;" id="final-score-val">0</div>
-            <div id="final-rank-text" style="font-weight: 800; margin-bottom: 10px;">-</div>
+            <h2 id="end-player-name" style="margin:0; color:#666; font-size: 0.9em;">KONEC HRY</h2>
+            <div style="font-size: 4em; font-weight: 900; color: var(--primary); line-height: 1;" id="final-score-val">0</div>
+            <div id="final-rank-text" style="font-weight: 800; margin: 10px 0 20px 0; color: #1a1a1a; letter-spacing: 2px; text-transform: uppercase;">-</div>
             <div class="challenge-box">
-                <label style="font-size: 0.6em; font-weight: bold; color: #888;">KÓD VÝZVY PRO OSTATNÍ:</label>
+                <label style="font-size: 0.6em; font-weight: bold; color: #888; display: block; margin-bottom: 5px;">SDÍLEJ VÝZVU S PŘÁTELI:</label>
                 <div id="challenge-output">Získávám...</div>
             </div>
-            <button class="btn-main" onclick="location.reload()">Zpět do menu</button>
+            <button class="btn-main" onclick="location.reload()">Zkusit znovu</button>
         </div>
     </div>
 
     <div id="loading" class="loading-overlay">
         <div class="spinner"></div>
-        <p style="margin-top: 20px;">NAČÍTÁNÍ...</p>
+        <p style="margin-top: 20px; font-weight: 800; letter-spacing: 2px;">HLEDÁM MÍSTO...</p>
     </div>
 
     <div id="ui-top">
-        <div class="stat-item"><span style="font-size:0.6em; text-transform:uppercase; opacity:0.6;">Čas</span><span id="timer-val" class="stat-value">00:00</span></div>
-        <div class="stat-item"><span style="font-size:0.6em; text-transform:uppercase; opacity:0.6;">Kolo</span><span id="round-val" class="stat-value">1/5</span></div>
-        <div class="stat-item"><span style="font-size:0.6em; text-transform:uppercase; opacity:0.6;">Body</span><span id="score-val" class="stat-value">0</span></div>
+        <div class="stat-item"><span style="font-size:0.6em; text-transform:uppercase; opacity:0.6; display: block;">Čas</span><span id="timer-val" class="stat-value">00:00</span></div>
+        <div class="stat-item"><span style="font-size:0.6em; text-transform:uppercase; opacity:0.6; display: block;">Kolo</span><span id="round-val" class="stat-value">1/5</span></div>
+        <div class="stat-item"><span style="font-size:0.6em; text-transform:uppercase; opacity:0.6; display: block;">Body</span><span id="score-val" class="stat-value">0</span></div>
     </div>
 
     <div id="panoCont"></div>
 
     <div id="map-container">
         <div id="status-msg"></div>
-        <div id="controls">
+        <div id="controls" style="width: 100%;">
             <button id="guessBtn" class="btn-main" onclick="evaluateGuess()">Potvrdit tip</button>
-            <button id="nextBtn" class="btn-next" onclick="nextRound()">Další kolo ➡</button>
+            <button id="nextBtn" class="btn-next" onclick="nextRound()">Pokračovat ➡</button>
         </div>
         <div id="guessMap"></div>
     </div>
@@ -145,16 +196,35 @@
         let startPoint, panorama, map, userMarker, correctMarker, line;
         let currentRound = 0, totalScore = 0, timerInterval;
         let challengeCoords = [], isChallenge = false;
-        let config = { rounds: 5, time: 60, name: "", move: true, isInfinite: false };
+        let config = { rounds: 5, time: 60, name: "", move: true, isInfinite: false, mapType: "all" };
 
-        // LOGIKA SLIDERU V MENU
+        // Definice oblastí pro mapy
+        const MAP_BOUNDS = {
+            all: { lat: [48.6, 51.0], lon: [12.1, 18.8] },
+            cities: [ // Centra velkých měst
+                {lat: 50.087, lon: 14.421, name: "Praha"},
+                {lat: 49.195, lon: 16.608, name: "Brno"},
+                {lat: 49.833, lon: 18.282, name: "Ostrava"},
+                {lat: 49.747, lon: 13.377, name: "Plzeň"},
+                {lat: 50.767, lon: 15.056, name: "Liberec"},
+                {lat: 50.209, lon: 15.832, name: "Hradec Králové"}
+            ],
+            castles: [ // Výběr hradů
+                {lat: 49.939, lon: 13.951}, // Karlštejn
+                {lat: 48.885, lon: 16.812}, // Lednice
+                {lat: 50.060, lon: 13.885}, // Křivoklát
+                {lat: 50.516, lon: 15.138}, // Trosky
+                {lat: 48.812, lon: 14.315}  // Český Krumlov
+            ]
+        };
+
         const slider = document.getElementById('timeSlider');
         const display = document.getElementById('timeDisplay');
         const infToggle = document.getElementById('infToggle');
 
         slider.addEventListener('input', () => {
             if (config.isInfinite) toggleInfinite(false);
-            display.innerText = slider.value + 's';
+            display.innerText = slider.value;
         });
 
         infToggle.addEventListener('click', () => {
@@ -170,7 +240,7 @@
                 slider.disabled = true;
             } else {
                 infToggle.classList.remove('active');
-                display.innerText = slider.value + 's';
+                display.innerText = slider.value;
                 slider.style.opacity = '1';
                 slider.disabled = false;
             }
@@ -181,6 +251,7 @@
             config.time = config.isInfinite ? 0 : parseInt(slider.value);
             config.move = document.getElementById('cfgMove').value === "1";
             config.name = document.getElementById('playerName').value || "Hráč";
+            config.mapType = document.getElementById('cfgMap').value;
             
             const chalInput = document.getElementById('cfgChallenge').value.trim();
             if (chalInput) {
@@ -227,10 +298,19 @@
             } else {
                 let panoInfo = null;
                 while(!panoInfo) {
-                    const lat = 48.6 + Math.random() * 2.4;
-                    const lon = 12.1 + Math.random() * 6.7;
+                    let lat, lon;
+                    if (config.mapType === 'all') {
+                        lat = 48.6 + Math.random() * 2.4;
+                        lon = 12.1 + Math.random() * 6.7;
+                    } else {
+                        const pool = MAP_BOUNDS[config.mapType];
+                        const center = pool[Math.floor(Math.random() * pool.length)];
+                        lat = center.lat + (Math.random() - 0.5) * 0.02; // Rozptyl v okolí bodu
+                        lon = center.lon + (Math.random() - 0.5) * 0.02;
+                    }
+                    
                     try {
-                        const res = await Panorama.panoramaExists({lat, lon, radius: 5000, apiKey});
+                        const res = await Panorama.panoramaExists({lat, lon, radius: 4000, apiKey});
                         if (res.exists) panoInfo = res.info;
                     } catch(e){}
                 }
@@ -276,7 +356,7 @@
             const score = Math.round(5000 * Math.exp(-dist / 70));
             totalScore += score;
 
-            let locText = "Načítám adresu...";
+            let locText = "Neznámé místo";
             try {
                 const res = await fetch(`https://api.mapy.cz/v1/geocode/reverse?lon=${startPoint.lon}&lat=${startPoint.lat}&apikey=${apiKey}`);
                 const data = await res.json();
