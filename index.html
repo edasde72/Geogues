@@ -2,7 +2,7 @@
 <html lang="cs">
 <head>
     <meta charset="utf-8" />
-    <title>GeoGuessr ČR - Slider Pro</title>
+    <title>GeoGuessr ČR - Custom Maps</title>
     
     <script type="text/javascript" src="https://api.mapy.cz/js/panorama/v1/panorama.js"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -20,99 +20,68 @@
         #panoCont { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
         .m-panorama .m-panorama-scene-caption { display: none !important; }
 
-        /* NOVÉ MODERNÍ MENU */
         .overlay-screen {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: radial-gradient(circle at center, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0.8) 100%),
-                        url('https://api.mapy.cz/v1/maptiles/basic/256/8/140/88?apikey=f0v1yILk7F_95Aa_nLPp0r2CUEfFosLnbxoUPZIDIAQ'); /* Pozadí s mapou */
-            background-size: cover;
+            background: radial-gradient(circle at center, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.9) 100%);
             z-index: 10000; display: flex; justify-content: center; align-items: center; color: white;
             backdrop-filter: blur(8px);
         }
 
         .card {
-            background: var(--glass); color: #1a1a1a; padding: 40px; border-radius: 24px;
-            width: 450px; text-align: center; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-            border: 1px solid rgba(255,255,255,0.3);
+            background: var(--glass); color: #1a1a1a; padding: 30px; border-radius: 24px;
+            width: 450px; text-align: center; box-shadow: 0 25px 50px rgba(0,0,0,0.5);
+            max-height: 90vh; overflow-y: auto;
         }
 
-        .card h1 { 
-            color: var(--primary); margin: 0 0 10px 0; font-size: 2.5em; 
-            font-weight: 900; letter-spacing: -1px; text-transform: uppercase;
-        }
-
-        .subtitle { color: #666; font-size: 0.9em; margin-bottom: 30px; font-weight: 500; }
+        .card h1 { color: var(--primary); margin: 0; font-size: 2.2em; font-weight: 900; text-transform: uppercase; }
+        .subtitle { color: #666; font-size: 0.85em; margin-bottom: 20px; }
         
-        .menu-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
+        .menu-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 15px; }
         .menu-item { text-align: left; }
         .full-width { grid-column: span 2; }
 
-        .menu-item label { 
-            display: block; font-weight: 700; margin-bottom: 6px; 
-            font-size: 0.75em; color: #444; text-transform: uppercase; letter-spacing: 0.5px;
-        }
+        .menu-item label { display: block; font-weight: 700; margin-bottom: 4px; font-size: 0.7em; color: #444; text-transform: uppercase; }
 
         input[type="text"], input[type="number"], select { 
-            width: 100%; padding: 12px 15px; border-radius: 12px; border: 2px solid #e2e8f0; 
-            font-size: 0.95em; outline: none; box-sizing: border-box; background: #f8fafc;
-            transition: border-color 0.2s; font-family: inherit;
+            width: 100%; padding: 10px; border-radius: 10px; border: 2px solid #e2e8f0; 
+            font-size: 0.9em; outline: none; box-sizing: border-box; background: #f8fafc;
         }
 
-        input:focus, select:focus { border-color: var(--primary); }
-
-        /* SLIDER STYLE */
-        .time-controls { 
-            display: flex; align-items: center; gap: 12px; background: #f1f5f9; 
-            padding: 8px 12px; border-radius: 12px; border: 2px solid #e2e8f0; 
-        }
-        #timeSlider { flex: 1; accent-color: var(--primary); cursor: pointer; }
-        #timeDisplay { font-weight: 800; color: var(--primary); min-width: 45px; text-align: center; font-size: 1.1em;}
+        .time-controls { display: flex; align-items: center; gap: 10px; background: #f1f5f9; padding: 5px 10px; border-radius: 10px; border: 2px solid #e2e8f0; }
+        #timeSlider { flex: 1; accent-color: var(--primary); }
         
-        .inf-btn { 
-            background: white; color: #444; width: 35px; height: 35px; border-radius: 8px; 
-            font-size: 1.2em; border: 1px solid #cbd5e1; cursor: pointer; transition: 0.2s; 
-            display: flex; align-items: center; justify-content: center;
-        }
+        .inf-btn { background: white; color: #444; width: 30px; height: 30px; border-radius: 8px; border: 1px solid #cbd5e1; cursor: pointer; }
         .inf-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
 
-        /* UI PRVKY PŘI HŘE */
-        #ui-top { 
-            position: absolute; top: 20px; left: 50%; transform: translateX(-50%); z-index: 1000; 
-            background: rgba(0, 0, 0, 0.8); color: white; padding: 10px 30px; border-radius: 50px; 
-            display: none; gap: 30px; align-items: center; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1);
-        }
-        .stat-value { font-size: 1.2em; font-weight: 800; display: block; }
-        #timer-val { color: var(--primary); }
+        button { cursor: pointer; border: none; border-radius: 12px; font-weight: 800; transition: 0.2s; text-transform: uppercase; }
+        .btn-main { background: var(--primary); color: white; width: 100%; padding: 15px; font-size: 1em; margin-top: 10px; }
+        .btn-editor { background: #4a5568; color: white; width: 100%; padding: 10px; font-size: 0.8em; margin-top: 10px; }
+        .btn-main:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(237, 28, 36, 0.3); }
 
+        /* EDITOR UI */
+        #editor-ui { display: none; flex-direction: column; width: 600px; }
+        #editorMap { width: 100%; height: 400px; border-radius: 15px; margin: 15px 0; border: 3px solid #ddd; }
+
+        #ui-top { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); z-index: 1000; background: rgba(0,0,0,0.8); color: white; padding: 10px 30px; border-radius: 50px; display: none; gap: 30px; }
         #map-container { position: absolute; bottom: 25px; right: 25px; z-index: 1000; display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
-        #guessMap { width: 300px; height: 220px; border: 5px solid white; box-shadow: 0 10px 30px rgba(0,0,0,0.4); border-radius: 20px; transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        #guessMap { width: 300px; height: 220px; border: 5px solid white; border-radius: 20px; transition: 0.3s; }
         #guessMap:hover { width: 500px; height: 350px; }
-        
-        button { cursor: pointer; border: none; border-radius: 14px; font-weight: 800; transition: 0.2s; text-transform: uppercase; letter-spacing: 1px; }
-        .btn-main { background: var(--primary); color: white; width: 100%; padding: 18px; font-size: 1.1em; box-shadow: 0 4px 15px rgba(237, 28, 36, 0.3); }
-        .btn-main:hover { background: var(--primary-dark); transform: translateY(-2px); box-shadow: 0 6px 20px rgba(237, 28, 36, 0.4); }
-        .btn-next { background: #10b981; color: white; width: 100%; padding: 18px; display: none; }
-
-        .challenge-box { background: #f8fafc; padding: 12px; border-radius: 12px; margin: 15px 0; border: 2px dashed #cbd5e1; }
-        #challenge-output { font-family: 'Courier New', monospace; font-size: 0.75em; word-break: break-all; color: #64748b; }
-
+        .btn-next { background: #10b981; color: white; width: 100%; padding: 15px; display: none; }
+        #status-msg { background: white; padding: 15px; border-radius: 15px; display: none; width: 100%; box-sizing: border-box; border-left: 6px solid var(--primary); color: #222; }
         .loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; display: none; flex-direction: column; justify-content: center; align-items: center; color: white; z-index: 9999; }
-        .spinner { width: 40px; height: 40px; border: 4px solid #333; border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s infinite linear; }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        #status-msg { background: white; color: #1a1a1a; padding: 15px; border-radius: 15px; display: none; width: 100%; box-sizing: border-box; border-left: 6px solid var(--primary); text-align: left; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
     </style>
 </head>
 <body>
 
     <div id="menu" class="overlay-screen">
-        <div class="card">
+        <div class="card" id="main-card">
             <h1>GeoGuessr ČR</h1>
-            <div class="subtitle">Poznej krásy České republiky</div>
+            <div class="subtitle">Poznej česko na vlastní kůži</div>
             
             <div class="menu-grid">
                 <div class="menu-item full-width">
                     <label>Tvé jméno</label>
-                    <input type="text" id="playerName" placeholder="Anonymní cestovatel">
+                    <input type="text" id="playerName" placeholder="Hráč">
                 </div>
                 
                 <div class="menu-item">
@@ -120,7 +89,6 @@
                     <select id="cfgMap">
                         <option value="all">Celá ČR</option>
                         <option value="cities">Velká města</option>
-                        <option value="castles">Hrady a zámky</option>
                     </select>
                 </div>
 
@@ -147,105 +115,124 @@
                 </div>
 
                 <div class="menu-item full-width">
-                    <label>Kód výzvy</label>
-                    <input type="text" id="cfgChallenge" placeholder="Vlož kód od kamaráda...">
+                    <label>Kód výzvy (volitelné)</label>
+                    <input type="text" id="cfgChallenge" placeholder="Vlož kód a hraj...">
                 </div>
             </div>
 
-            <button class="btn-main" onclick="startGame()">Hrát hru</button>
+            <button class="btn-main" onclick="startGame()">Spustit hru</button>
+            <button class="btn-editor" onclick="openEditor()">🛠 Vytvořit vlastní mapu</button>
+        </div>
+
+        <div class="card" id="editor-ui">
+            <h1>Editor Mapy</h1>
+            <div class="subtitle">Klikni do mapy a vyber až 10 míst</div>
+            <div id="editorMap"></div>
+            <div id="editor-info" style="font-size: 0.8em; margin-bottom: 10px; color: #666;">Vybraná místa: 0/10</div>
+            <div id="editor-code-box" style="display:none; background:#eee; padding:10px; border-radius:8px; margin-bottom:10px; font-family:monospace; font-size:0.7em; word-break:break-all;"></div>
+            <div style="display:flex; gap:10px;">
+                <button class="btn-editor" style="flex:1; background:#e2e8f0; color:#333;" onclick="closeEditor()">Zpět</button>
+                <button class="btn-editor" style="flex:1; background:#10b981;" onclick="generateChallengeCode()">Získat kód</button>
+            </div>
         </div>
     </div>
 
     <div id="end-screen" class="overlay-screen" style="display: none;">
         <div class="card">
-            <h2 id="end-player-name" style="margin:0; color:#666; font-size: 0.9em;">KONEC HRY</h2>
-            <div style="font-size: 4em; font-weight: 900; color: var(--primary); line-height: 1;" id="final-score-val">0</div>
-            <div id="final-rank-text" style="font-weight: 800; margin: 10px 0 20px 0; color: #1a1a1a; letter-spacing: 2px; text-transform: uppercase;">-</div>
-            <div class="challenge-box">
-                <label style="font-size: 0.6em; font-weight: bold; color: #888; display: block; margin-bottom: 5px;">SDÍLEJ VÝZVU S PŘÁTELI:</label>
-                <div id="challenge-output">Získávám...</div>
+            <h2 id="end-player-name" style="margin:0; opacity:0.6; font-size:0.8em;">KONEC HRY</h2>
+            <div style="font-size: 4em; font-weight: 900; color: var(--primary);" id="final-score-val">0</div>
+            <div id="final-rank-text" style="font-weight: 800; margin-bottom: 20px;">-</div>
+            <div style="background:#f1f5f9; padding:10px; border-radius:12px; border:2px dashed #cbd5e1;">
+                <label style="font-size:0.6em; font-weight:bold; color:#888;">KÓD TÉTO HRY:</label>
+                <div id="challenge-output" style="font-family:monospace; font-size:0.7em; word-break:break-all; user-select:all;"></div>
             </div>
-            <button class="btn-main" onclick="location.reload()">Zkusit znovu</button>
+            <button class="btn-main" onclick="location.reload()">Menu</button>
         </div>
     </div>
 
     <div id="loading" class="loading-overlay">
-        <div class="spinner"></div>
-        <p style="margin-top: 20px; font-weight: 800; letter-spacing: 2px;">HLEDÁM MÍSTO...</p>
+        <div style="width:40px; height:40px; border:4px solid #333; border-top-color:var(--primary); border-radius:50%; animation:spin 0.8s infinite linear;"></div>
+        <p style="margin-top:20px; font-weight:800;">NAČÍTÁNÍ...</p>
     </div>
 
     <div id="ui-top">
-        <div class="stat-item"><span style="font-size:0.6em; text-transform:uppercase; opacity:0.6; display: block;">Čas</span><span id="timer-val" class="stat-value">00:00</span></div>
-        <div class="stat-item"><span style="font-size:0.6em; text-transform:uppercase; opacity:0.6; display: block;">Kolo</span><span id="round-val" class="stat-value">1/5</span></div>
-        <div class="stat-item"><span style="font-size:0.6em; text-transform:uppercase; opacity:0.6; display: block;">Body</span><span id="score-val" class="stat-value">0</span></div>
+        <div class="stat-item"><span style="font-size:0.6em; opacity:0.6; display:block;">Čas</span><span id="timer-val" style="font-weight:800; color:var(--primary);">0:00</span></div>
+        <div class="stat-item"><span style="font-size:0.6em; opacity:0.6; display:block;">Kolo</span><span id="round-val" style="font-weight:800;">1/5</span></div>
+        <div class="stat-item"><span style="font-size:0.6em; opacity:0.6; display:block;">Body</span><span id="score-val" style="font-weight:800;">0</span></div>
     </div>
 
     <div id="panoCont"></div>
 
     <div id="map-container">
         <div id="status-msg"></div>
-        <div id="controls" style="width: 100%;">
+        <div id="controls" style="width:100%;">
             <button id="guessBtn" class="btn-main" onclick="evaluateGuess()">Potvrdit tip</button>
-            <button id="nextBtn" class="btn-next" onclick="nextRound()">Pokračovat ➡</button>
+            <button id="nextBtn" class="btn-next" onclick="nextRound()">Další kolo</button>
         </div>
         <div id="guessMap"></div>
     </div>
 
-    <script type="text/javascript">
+    <script>
         const apiKey = 'f0v1yILk7F_95Aa_nLPp0r2CUEfFosLnbxoUPZIDIAQ';
         let startPoint, panorama, map, userMarker, correctMarker, line;
         let currentRound = 0, totalScore = 0, timerInterval;
         let challengeCoords = [], isChallenge = false;
         let config = { rounds: 5, time: 60, name: "", move: true, isInfinite: false, mapType: "all" };
 
-        // Definice oblastí pro mapy
-        const MAP_BOUNDS = {
-            all: { lat: [48.6, 51.0], lon: [12.1, 18.8] },
-            cities: [ // Centra velkých měst
-                {lat: 50.087, lon: 14.421, name: "Praha"},
-                {lat: 49.195, lon: 16.608, name: "Brno"},
-                {lat: 49.833, lon: 18.282, name: "Ostrava"},
-                {lat: 49.747, lon: 13.377, name: "Plzeň"},
-                {lat: 50.767, lon: 15.056, name: "Liberec"},
-                {lat: 50.209, lon: 15.832, name: "Hradec Králové"}
-            ],
-            castles: [ // Výběr hradů
-                {lat: 49.939, lon: 13.951}, // Karlštejn
-                {lat: 48.885, lon: 16.812}, // Lednice
-                {lat: 50.060, lon: 13.885}, // Křivoklát
-                {lat: 50.516, lon: 15.138}, // Trosky
-                {lat: 48.812, lon: 14.315}  // Český Krumlov
-            ]
-        };
+        // EDITOR VARIABLES
+        let editorMap, editorMarkers = [];
 
+        // SLIDER LOGIC
         const slider = document.getElementById('timeSlider');
         const display = document.getElementById('timeDisplay');
-        const infToggle = document.getElementById('infToggle');
+        slider.addEventListener('input', () => { if(!config.isInfinite) display.innerText = slider.value; });
+        document.getElementById('infToggle').onclick = () => {
+            config.isInfinite = !config.isInfinite;
+            display.innerText = config.isInfinite ? '∞' : slider.value;
+            document.getElementById('infToggle').classList.toggle('active');
+        };
 
-        slider.addEventListener('input', () => {
-            if (config.isInfinite) toggleInfinite(false);
-            display.innerText = slider.value;
-        });
-
-        infToggle.addEventListener('click', () => {
-            toggleInfinite(!config.isInfinite);
-        });
-
-        function toggleInfinite(force) {
-            config.isInfinite = force;
-            if (config.isInfinite) {
-                infToggle.classList.add('active');
-                display.innerText = '∞';
-                slider.style.opacity = '0.3';
-                slider.disabled = true;
-            } else {
-                infToggle.classList.remove('active');
-                display.innerText = slider.value;
-                slider.style.opacity = '1';
-                slider.disabled = false;
+        // --- EDITOR FUNCTIONS ---
+        function openEditor() {
+            document.getElementById('main-card').style.display = 'none';
+            document.getElementById('editor-ui').style.display = 'flex';
+            if (!editorMap) {
+                editorMap = L.map('editorMap').setView([49.8, 15.5], 7);
+                L.tileLayer(`https://api.mapy.cz/v1/maptiles/basic/256/{z}/{x}/{y}?apikey=${apiKey}`).addTo(editorMap);
+                editorMap.on('click', (e) => {
+                    if (editorMarkers.length >= 10) return;
+                    const m = L.marker([e.latlng.lat, e.latlng.lng]).addTo(editorMap);
+                    m.on('click', () => {
+                        editorMap.removeLayer(m);
+                        editorMarkers = editorMarkers.filter(x => x !== m);
+                        updateEditorInfo();
+                    });
+                    editorMarkers.push(m);
+                    updateEditorInfo();
+                });
             }
         }
 
+        function updateEditorInfo() {
+            document.getElementById('editor-info').innerText = `Vybraná místa: ${editorMarkers.length}/10 (kliknutím na značku ji smažeš)`;
+        }
+
+        function closeEditor() {
+            document.getElementById('main-card').style.display = 'block';
+            document.getElementById('editor-ui').style.display = 'none';
+        }
+
+        function generateChallengeCode() {
+            if (editorMarkers.length === 0) { alert("Vyber aspoň jedno místo!"); return; }
+            const coords = editorMarkers.map(m => ({ lat: m.getLatLng().lat, lon: m.getLatLng().lng }));
+            const code = btoa(JSON.stringify(coords));
+            const box = document.getElementById('editor-code-box');
+            box.innerText = code;
+            box.style.display = 'block';
+            alert("Kód vygenerován! Zkopíruj si ho z šedého pole.");
+        }
+
+        // --- GAME FUNCTIONS ---
         function startGame() {
             config.rounds = parseInt(document.getElementById('cfgRounds').value);
             config.time = config.isInfinite ? 0 : parseInt(slider.value);
@@ -264,7 +251,6 @@
 
             document.getElementById('menu').style.display = 'none';
             document.getElementById('ui-top').style.display = 'flex';
-            document.getElementById('controls').style.display = 'flex';
             initMap();
             nextRound();
         }
@@ -288,6 +274,7 @@
             document.getElementById('nextBtn').style.display = 'none';
             document.getElementById('status-msg').style.display = 'none';
             document.getElementById('round-val').innerText = `${currentRound}/${config.rounds}`;
+            
             if (userMarker) map.removeLayer(userMarker);
             if (correctMarker) map.removeLayer(correctMarker);
             if (line) map.removeLayer(line);
@@ -299,18 +286,17 @@
                 let panoInfo = null;
                 while(!panoInfo) {
                     let lat, lon;
-                    if (config.mapType === 'all') {
+                    if (config.mapType === 'cities') {
+                        const cities = [{lat:50.08,lon:14.42},{lat:49.19,lon:16.60},{lat:49.83,lon:18.28},{lat:49.74,lon:13.37}];
+                        const c = cities[Math.floor(Math.random()*cities.length)];
+                        lat = c.lat + (Math.random()-0.5)*0.05;
+                        lon = c.lon + (Math.random()-0.5)*0.05;
+                    } else {
                         lat = 48.6 + Math.random() * 2.4;
                         lon = 12.1 + Math.random() * 6.7;
-                    } else {
-                        const pool = MAP_BOUNDS[config.mapType];
-                        const center = pool[Math.floor(Math.random() * pool.length)];
-                        lat = center.lat + (Math.random() - 0.5) * 0.02; // Rozptyl v okolí bodu
-                        lon = center.lon + (Math.random() - 0.5) * 0.02;
                     }
-                    
                     try {
-                        const res = await Panorama.panoramaExists({lat, lon, radius: 4000, apiKey});
+                        const res = await Panorama.panoramaExists({lat, lon, radius: 5000, apiKey});
                         if (res.exists) panoInfo = res.info;
                     } catch(e){}
                 }
@@ -330,19 +316,17 @@
             else document.getElementById('timer-val').innerText = "∞";
         }
 
-        function startTimer(seconds) {
-            let timeLeft = seconds;
-            updateTimerDisplay(timeLeft);
+        function startTimer(s) {
+            let left = s;
+            const up = () => {
+                const m = Math.floor(left/60); const sc = left%60;
+                document.getElementById('timer-val').innerText = `${m}:${sc<10?'0':''}${sc}`;
+            };
+            up();
             timerInterval = setInterval(() => {
-                timeLeft--;
-                updateTimerDisplay(timeLeft);
-                if (timeLeft <= 0) { clearInterval(timerInterval); evaluateGuess(); }
+                left--; up();
+                if (left <= 0) { clearInterval(timerInterval); evaluateGuess(); }
             }, 1000);
-        }
-
-        function updateTimerDisplay(s) {
-            const mins = Math.floor(s / 60); const secs = s % 60;
-            document.getElementById('timer-val').innerText = `${mins}:${secs < 10 ? '0' : ''}${secs}`;
         }
 
         async function evaluateGuess() {
@@ -356,17 +340,9 @@
             const score = Math.round(5000 * Math.exp(-dist / 70));
             totalScore += score;
 
-            let locText = "Neznámé místo";
-            try {
-                const res = await fetch(`https://api.mapy.cz/v1/geocode/reverse?lon=${startPoint.lon}&lat=${startPoint.lat}&apikey=${apiKey}`);
-                const data = await res.json();
-                if (data.items.length > 0) locText = `${data.items[0].address.municipality}, ${data.items[0].address.region}`;
-            } catch(e) {}
-
             const status = document.getElementById('status-msg');
-            status.innerHTML = `<div style="font-weight:900; color:#ed1c24; font-size:1.2em;">+${score} bodů</div><div>Vzdálenost: ${dist.toFixed(1)} km</div><div style="font-size:0.8em; color:#888; border-top:1px solid #eee; margin-top:5px; padding-top:5px;">📍 ${locText}</div>`;
+            status.innerHTML = `<b style="color:var(--primary)">+${score} bodů</b><br><small>Vzdálenost: ${dist.toFixed(1)} km</small>`;
             status.style.display = 'block';
-            
             document.getElementById('score-val').innerText = totalScore;
             document.getElementById('guessBtn').style.display = 'none';
             document.getElementById('nextBtn').style.display = 'block';
@@ -386,6 +362,8 @@
             document.getElementById('final-rank-text').innerText = r;
             document.getElementById('end-screen').style.display = 'flex';
         }
+
+        window.addEventListener('keydown', (e) => { if(e.key === 'Enter' && document.getElementById('guessBtn').style.display !== 'none') evaluateGuess(); });
     </script>
 </body>
 </html>
