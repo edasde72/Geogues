@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="utf-8" />
+    <title>GeoGuessr ČR - Slider Pro</title>
+    
+    <script type="text/javascript" src="https://api.mapy.cz/js/panorama/v1/panorama.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <style>
+        body { margin: 0; padding: 0; height: 100vh; font-family: 'Segoe UI', Roboto, sans-serif; overflow: hidden; background: #000; }
+        #panoCont { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
+        .m-panorama .m-panorama-scene-caption { display: none !important; }
+
+        .overlay-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(135deg, rgba(20,20,20,0.96) 0%, rgba(50,50,50,0.92) 100%);
+            z-index: 10000; display: flex; justify-content: center; align-items: center; color: white;
+        }
+        .card {
+            background: white; color: #222; padding: 35px; border-radius: 30px;
+            width: 420px; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+        }
+        .card h1 { color: #ed1c24; margin: 0 0 20px 0; font-size: 2.2em; text-transform: uppercase; }
+        
+        .menu-item { margin-bottom: 20px; text-align: left; }
+        .menu-item label { display: block; font-weight: 800; margin-bottom: 8px; font-size: 0.7em; color: #999; text-transform: uppercase; }
+        .menu-item input[type="text"], .menu-item input[type="number"], .menu-item select { 
+            width: 100%; padding: 12px; border-radius: 10px; border: 2px solid #eee; 
+            font-size: 0.95em; outline: none; box-sizing: border-box; background: #f9f9f9;
+        }
+
+        /* SLIDER STYLE */
+        .time-controls { display: flex; align-items: center; gap: 15px; background: #f9f9f9; padding: 10px; border-radius: 10px; border: 2px solid #eee; }
+        #timeSlider { flex: 1; accent-color: #ed1c24; cursor: pointer; }
+        #timeDisplay { font-weight: 800; color: #ed1c24; min-width: 60px; text-align: center; }
+        .inf-btn { background: #eee; color: #333; padding: 8px 12px; border-radius: 8px; font-size: 0.8em; font-weight: bold; border: 1px solid #ccc; cursor: pointer; transition: 0.2s; }
+        .inf-btn.active { background: #ed1c24; color: white; border-color: #ed1c24; }
+
+        .challenge-box { background: #f0f0f0; padding: 10px; border-radius: 10px; margin: 15px 0; border: 2px dashed #ccc; }
+        #challenge-output { font-family: monospace; font-size: 0.8em; word-break: break-all; user-select: all; color: #444; }
+
+        #ui-top { 
+            position: absolute; top: 20px; left: 50%; transform: translateX(-50%); z-index: 1000; 
+            background: rgba(0, 0, 0, 0.85); color: white; padding: 12px 40px; border-radius: 100px; 
+            display: none; gap: 40px; align-items: center; backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.2);
+        }
+        .stat-value { font-size: 1.4em; font-weight: 800; display: block; text-align: center; }
+        #timer-val { color: #ed1c24; }
+
+        #map-container { position: absolute; bottom: 25px; right: 25px; z-index: 1000; display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
+        #guessMap { width: 320px; height: 240px; border: 6px solid white; box-shadow: 0 15px 45px rgba(0,0,0,0.5); border-radius: 24px; transition: 0.3s; }
+        #guessMap:hover { width: 550px; height: 380px; }
+        
+        button { cursor: pointer; border: none; border-radius: 12px; font-weight: 800; color: white; transition: 0.2s; text-transform: uppercase; }
+        .btn-main { background: #ed1c24; width: 100%; padding: 16px; font-size: 1.1em; }
+        .btn-main:hover { background: #d1191f; transform: translateY(-2px); }
+        .btn-next { background: #28a745; width: 100%; padding: 16px; display: none; }
+
+        #status-msg { background: white; color: #222; padding: 15px; border-radius: 15px; display: none; width: 100%; box-sizing: border-box; border-left: 6px solid #ed1c24; text-align: left; }
+
+        .loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; display: none; flex-direction: column; justify-content: center; align-items: center; color: white; z-index: 9999; }
+        .spinner { width: 50px; height: 50px; border: 5px solid #222; border-top-color: #ed1c24; border-radius: 50%; animation: spin 0.8s infinite linear; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+    <div id="menu" class="overlay-screen">
+        <div class="card">
+            <h1>GeoGuessr ČR</h1>
+            <div class="menu-item">
+                <label>Tvé jméno</label>
+                <input type="text" id="playerName" placeholder="Zadej jméno...">
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <div class="menu-item" style="flex: 1;">
+                    <label>Kola</label>
+                    <input type="number" id="cfgRounds" value="5" min="1" max="10">
+                </div>
+                <div class="menu-item" style="flex: 1;">
+                    <label>Pohyb</label>
+                    <select id="cfgMove">
+                        <option value="1">Povolen</option>
+                        <option value="0">Zakázán</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="menu-item">
+                <label>Časový limit</label>
+                <div class="time-controls">
+                    <input type="range" id="timeSlider" min="10" max="300" step="5" value="60">
+                    <span id="timeDisplay">60s</span>
+                    <button class="inf-btn" id="infToggle">∞</button>
+                </div>
+            </div>
+
+            <div class="menu-item">
+                <label>Kód výzvy (volitelné)</label>
+                <input type="text" id="cfgChallenge" placeholder="Vlož kód od kamaráda...">
+            </div>
+            <button class="btn-main" onclick="startGame()">Spustit hru</button>
+        </div>
+    </div>
+
+    <div id="end-screen" class="overlay-screen" style="display: none;">
+        <div class="card">
+            <h2 id="end-player-name">KONEC HRY</h2>
+            <div style="font-size: 3.5em; font-weight: 900; color: #ed1c24;" id="final-score-val">0</div>
+            <div id="final-rank-text" style="font-weight: 800; margin-bottom: 10px;">-</div>
+            <div class="challenge-box">
+                <label style="font-size: 0.6em; font-weight: bold; color: #888;">KÓD VÝZVY PRO OSTATNÍ:</label>
+                <div id="challenge-output">Získávám...</div>
+            </div>
+            <button class="btn-main" onclick="location.reload()">Zpět do menu</button>
+        </div>
+    </div>
+
+    <div id="loading" class="loading-overlay">
+        <div class="spinner"></div>
+        <p style="margin-top: 20px;">NAČÍTÁNÍ...</p>
+    </div>
+
+    <div id="ui-top">
+        <div class="stat-item"><span style="font-size:0.6em; text-transform:uppercase; opacity:0.6;">Čas</span><span id="timer-val" class="stat-value">00:00</span></div>
+        <div class="stat-item"><span style="font-size:0.6em; text-transform:uppercase; opacity:0.6;">Kolo</span><span id="round-val" class="stat-value">1/5</span></div>
+        <div class="stat-item"><span style="font-size:0.6em; text-transform:uppercase; opacity:0.6;">Body</span><span id="score-val" class="stat-value">0</span></div>
+    </div>
+
+    <div id="panoCont"></div>
+
+    <div id="map-container">
+        <div id="status-msg"></div>
+        <div id="controls">
+            <button id="guessBtn" class="btn-main" onclick="evaluateGuess()">Potvrdit tip</button>
+            <button id="nextBtn" class="btn-next" onclick="nextRound()">Další kolo ➡</button>
+        </div>
+        <div id="guessMap"></div>
+    </div>
+
+    <script type="text/javascript">
+        const apiKey = 'f0v1yILk7F_95Aa_nLPp0r2CUEfFosLnbxoUPZIDIAQ';
+        let startPoint, panorama, map, userMarker, correctMarker, line;
+        let currentRound = 0, totalScore = 0, timerInterval;
+        let challengeCoords = [], isChallenge = false;
+        let config = { rounds: 5, time: 60, name: "", move: true, isInfinite: false };
+
+        // LOGIKA SLIDERU V MENU
+        const slider = document.getElementById('timeSlider');
+        const display = document.getElementById('timeDisplay');
+        const infToggle = document.getElementById('infToggle');
+
+        slider.addEventListener('input', () => {
+            if (config.isInfinite) toggleInfinite(false);
+            display.innerText = slider.value + 's';
+        });
+
+        infToggle.addEventListener('click', () => {
+            toggleInfinite(!config.isInfinite);
+        });
+
+        function toggleInfinite(force) {
+            config.isInfinite = force;
+            if (config.isInfinite) {
+                infToggle.classList.add('active');
+                display.innerText = '∞';
+                slider.style.opacity = '0.3';
+                slider.disabled = true;
+            } else {
+                infToggle.classList.remove('active');
+                display.innerText = slider.value + 's';
+                slider.style.opacity = '1';
+                slider.disabled = false;
+            }
+        }
+
+        function startGame() {
+            config.rounds = parseInt(document.getElementById('cfgRounds').value);
+            config.time = config.isInfinite ? 0 : parseInt(slider.value);
+            config.move = document.getElementById('cfgMove').value === "1";
+            config.name = document.getElementById('playerName').value || "Hráč";
+            
+            const chalInput = document.getElementById('cfgChallenge').value.trim();
+            if (chalInput) {
+                try {
+                    challengeCoords = JSON.parse(atob(chalInput));
+                    config.rounds = challengeCoords.length;
+                    isChallenge = true;
+                } catch(e) { alert("Neplatný kód!"); return; }
+            }
+
+            document.getElementById('menu').style.display = 'none';
+            document.getElementById('ui-top').style.display = 'flex';
+            document.getElementById('controls').style.display = 'flex';
+            initMap();
+            nextRound();
+        }
+
+        function initMap() {
+            map = L.map('guessMap', { attributionControl: false }).setView([49.8, 15.5], 7);
+            L.tileLayer(`https://api.mapy.cz/v1/maptiles/basic/256/{z}/{x}/{y}?apikey=${apiKey}`).addTo(map);
+            map.on('click', (e) => {
+                if (document.getElementById('guessBtn').style.display === 'none') return;
+                if (userMarker) map.removeLayer(userMarker);
+                userMarker = L.marker([e.latlng.lat, e.latlng.lng]).addTo(map);
+            });
+        }
+
+        async function nextRound() {
+            currentRound++;
+            if (currentRound > config.rounds) { showEndScreen(); return; }
+            clearInterval(timerInterval);
+            document.getElementById('loading').style.display = 'flex';
+            document.getElementById('guessBtn').style.display = 'block';
+            document.getElementById('nextBtn').style.display = 'none';
+            document.getElementById('status-msg').style.display = 'none';
+            document.getElementById('round-val').innerText = `${currentRound}/${config.rounds}`;
+            if (userMarker) map.removeLayer(userMarker);
+            if (correctMarker) map.removeLayer(correctMarker);
+            if (line) map.removeLayer(line);
+            userMarker = null;
+
+            if (isChallenge) {
+                startPoint = challengeCoords[currentRound - 1];
+            } else {
+                let panoInfo = null;
+                while(!panoInfo) {
+                    const lat = 48.6 + Math.random() * 2.4;
+                    const lon = 12.1 + Math.random() * 6.7;
+                    try {
+                        const res = await Panorama.panoramaExists({lat, lon, radius: 5000, apiKey});
+                        if (res.exists) panoInfo = res.info;
+                    } catch(e){}
+                }
+                startPoint = { lat: panoInfo.lat, lon: panoInfo.lon };
+                challengeCoords.push(startPoint);
+            }
+
+            const container = document.getElementById('panoCont');
+            container.innerHTML = "";
+            panorama = await Panorama.panoramaFromPosition({
+                parent: container, lon: startPoint.lon, lat: startPoint.lat, 
+                apiKey: apiKey, showNavigation: config.move
+            });
+
+            document.getElementById('loading').style.display = 'none';
+            if (config.time > 0) startTimer(config.time);
+            else document.getElementById('timer-val').innerText = "∞";
+        }
+
+        function startTimer(seconds) {
+            let timeLeft = seconds;
+            updateTimerDisplay(timeLeft);
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                updateTimerDisplay(timeLeft);
+                if (timeLeft <= 0) { clearInterval(timerInterval); evaluateGuess(); }
+            }, 1000);
+        }
+
+        function updateTimerDisplay(s) {
+            const mins = Math.floor(s / 60); const secs = s % 60;
+            document.getElementById('timer-val').innerText = `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+        }
+
+        async function evaluateGuess() {
+            clearInterval(timerInterval);
+            const userPos = userMarker ? userMarker.getLatLng() : {lat: 49.8, lng: 15.5};
+            const R = 6371; 
+            const dLat = (userPos.lat - startPoint.lat) * Math.PI / 180;
+            const dLon = (userPos.lng - startPoint.lon) * Math.PI / 180;
+            const a = Math.sin(dLat/2)**2 + Math.cos(startPoint.lat*Math.PI/180)*Math.cos(userPos.lat*Math.PI/180)*Math.sin(dLon/2)**2;
+            const dist = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            const score = Math.round(5000 * Math.exp(-dist / 70));
+            totalScore += score;
+
+            let locText = "Načítám adresu...";
+            try {
+                const res = await fetch(`https://api.mapy.cz/v1/geocode/reverse?lon=${startPoint.lon}&lat=${startPoint.lat}&apikey=${apiKey}`);
+                const data = await res.json();
+                if (data.items.length > 0) locText = `${data.items[0].address.municipality}, ${data.items[0].address.region}`;
+            } catch(e) {}
+
+            const status = document.getElementById('status-msg');
+            status.innerHTML = `<div style="font-weight:900; color:#ed1c24; font-size:1.2em;">+${score} bodů</div><div>Vzdálenost: ${dist.toFixed(1)} km</div><div style="font-size:0.8em; color:#888; border-top:1px solid #eee; margin-top:5px; padding-top:5px;">📍 ${locText}</div>`;
+            status.style.display = 'block';
+            
+            document.getElementById('score-val').innerText = totalScore;
+            document.getElementById('guessBtn').style.display = 'none';
+            document.getElementById('nextBtn').style.display = 'block';
+
+            correctMarker = L.marker([startPoint.lat, startPoint.lon], { icon: L.icon({ iconUrl: 'https://api.mapy.cz/img/api/marker/drop-green.png', iconSize: [22, 30] }) }).addTo(map);
+            line = L.polyline([[userPos.lat, userPos.lng], [startPoint.lat, startPoint.lon]], {color: '#ed1c24', weight: 3, dashArray: '5,5'}).addTo(map);
+            map.fitBounds(new L.featureGroup([userMarker || correctMarker, correctMarker]).getBounds(), {padding: [40, 40]});
+        }
+
+        function showEndScreen() {
+            document.getElementById('ui-top').style.display = 'none';
+            document.getElementById('map-container').style.display = 'none';
+            document.getElementById('end-player-name').innerText = config.name;
+            document.getElementById('final-score-val').innerText = totalScore;
+            document.getElementById('challenge-output').innerText = btoa(JSON.stringify(challengeCoords));
+            let r = totalScore > (config.rounds * 4000) ? "Legenda" : (totalScore > (config.rounds * 2000) ? "Znalec" : "Turista");
+            document.getElementById('final-rank-text').innerText = r;
+            document.getElementById('end-screen').style.display = 'flex';
+        }
+    </script>
+</body>
+</html>
