@@ -105,7 +105,6 @@
         button.small { padding: 10px 20px; font-size: 14px; background: #999; }
         button.rematch { background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); margin-top: 10px; }
         button.menu { background: #666; margin-left: 10px; }
-        button.retry { background: #e74c3c; margin-top: 10px; }
         
         #hint { font-weight: 600; color: #667eea; margin-top: 10px; font-size: 18px; min-height: 50px; }
         .success { color: #10b981; font-size: 20px; font-weight: bold; }
@@ -137,7 +136,6 @@
         .status-connecting { background: #f59e0b; color: white; }
         .status-connected { background: #10b981; color: white; }
         .status-error { background: #ef4444; color: white; }
-        .status-relay { background: #3b82f6; color: white; }
         
         #history-panel { 
             max-height: 100px; 
@@ -189,10 +187,10 @@
         }
         .final-score { font-size: 48px; font-weight: bold; color: #667eea; margin: 20px 0; }
         
-        .connection-info {
-            background: #fff3cd;
-            border: 1px solid #ffeaa7;
-            color: #856404;
+        .server-info {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
             padding: 10px;
             border-radius: 8px;
             margin: 10px 0;
@@ -217,7 +215,7 @@
 <div id="game-container">
     <div id="menu" class="controls" style="flex: 1; display: flex; flex-direction: column; justify-content: center;">
         <h1>🌍 GeoGuessr</h1>
-        <p style="margin-bottom: 20px; color: #666;">Hádej zemi podle mapy!</p>
+        <p style="margin-bottom: 20px; color: #666;">Hádej zemu podle mapy!</p>
         
         <div class="menu" id="main-menu">
             <button class="menu-btn single" onclick="startSingle()">👤 Single Player</button>
@@ -226,14 +224,16 @@
         </div>
         
         <div id="host-panel" class="hidden" style="margin-top: 20px;">
+            <p><b>Tvůj server je aktivní!</b></p>
+            <div class="server-info">
+                🟢 Připojeno k: <b>TVUJ_SERVER.onrender.com</b><br>
+                <small>(Změň v kódu na tvou adresu z Render)</small>
+            </div>
             <p><b>Pošli tento odkaz kamarádovi:</b></p>
             <div class="code-box" id="share-link">Načítání...</div>
             <button class="menu-btn copy" onclick="copyLink()">📋 Kopírovat odkaz</button>
             <p style="color: #666; font-size: 14px; margin-top: 10px;">Nebo pošli jen ID:</p>
             <div class="code-box" id="peer-id" style="font-size: 12px;"></div>
-            <div class="connection-info" id="host-info">
-                <b>💡 Tip:</b> Pokud se soupeř nemůže připojit, zkuste oba použít mobilní data místo WiFi.
-            </div>
             <button onclick="backToMenu()" class="small">Zrušit</button>
         </div>
         
@@ -242,7 +242,6 @@
             <input type="text" id="join-code" placeholder="např. abc-123-def" style="width: 100%; margin: 10px 0; padding: 10px;">
             <button onclick="joinGame(document.getElementById('join-code').value)">Připojit se</button>
             <button onclick="showMain()" class="small">Zpět</button>
-            <button onclick="joinWithRelay()" class="retry">Připojit (záložní režim)</button>
             <p id="join-error" style="color: #e74c3c; margin-top: 10px;"></p>
         </div>
     </div>
@@ -277,7 +276,7 @@
 
             <div class="input-wrapper">
                 <div class="input-group">
-                    <input type="text" id="guessInput" placeholder="Napiš zemi..." autocomplete="off" disabled>
+                    <input type="text" id="guessInput" placeholder="Napiš zemu..." autocomplete="off" disabled>
                     <button onclick="makeGuess()" id="guessBtn" disabled>Hádat</button>
                 </div>
                 <div id="autocomplete-list" class="autocomplete-items"></div>
@@ -291,7 +290,9 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-    // Web Audio API pro zvuky
+    // ⚠️ DŮLEŽITÉ: Změň na adresu svého serveru z Render!
+    const SERVER_URL = 'TVUJ_SERVER.onrender.com'; // Např.: 'geogues-xyz.onrender.com'
+    
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     
     function playSound(type) {
@@ -364,8 +365,6 @@
     let score = 0, streak = 0;
     let peer, conn, isHost = false;
     let myId = null;
-    let connectionRetryCount = 0;
-    let useRelayOnly = false; // Záložní režim
     
     let mpState = {
         round: 1, 
@@ -379,54 +378,6 @@
     };
     let singleHistory = [];
 
-    // VYLEPŠENÁ KONFIGURACE s více TURN servery
-    function getPeerConfig(forceRelay = false) {
-        const iceServers = [
-            { urls: 'stun:stun.l.google.com:19302' },
-            { urls: 'stun:stun1.l.google.com:19302' },
-            // Open Relay TURN (nejspolehlivější zdarma)
-            {
-                urls: 'turn:openrelay.metered.ca:80',
-                username: 'openrelayproject',
-                credential: 'openrelayproject'
-            },
-            {
-                urls: 'turn:openrelay.metered.ca:443',
-                username: 'openrelayproject',
-                credential: 'openrelayproject'
-            },
-            {
-                urls: 'turn:openrelay.metered.ca:443?transport=tcp',
-                username: 'openrelayproject',
-                credential: 'openrelayproject'
-            },
-            // Záložní TURN servery
-            {
-                urls: 'turn:turn.anyfirewall.com:443?transport=tcp',
-                username: 'webrtc',
-                credential: 'webrtc'
-            },
-            {
-                urls: 'turn:turn.bistri.com:80',
-                username: 'homeo',
-                credential: 'homeo'
-            }
-        ];
-        
-        if (forceRelay) {
-            console.log("Používám záložní režim (relay only)...");
-        }
-        
-        return {
-            config: { 
-                iceServers: iceServers,
-                iceCandidatePoolSize: 10,
-                iceTransportPolicy: forceRelay ? 'relay' : 'all'
-            },
-            debug: 2 // Logování pro diagnostiku
-        };
-    }
-
     function updateConnectionStatus(status, text) {
         const el = document.getElementById('connection-status');
         el.className = '';
@@ -435,13 +386,9 @@
         if (status === 'connecting') el.classList.add('status-connecting');
         else if (status === 'connected') el.classList.add('status-connected');
         else if (status === 'error') el.classList.add('status-error');
-        else if (status === 'relay') el.classList.add('status-relay');
         
         el.textContent = text;
-        
-        if (status === 'connected') {
-            setTimeout(() => el.classList.add('hidden'), 3000);
-        }
+        if (status === 'connected') setTimeout(() => el.classList.add('hidden'), 3000);
     }
 
     window.onload = function() {
@@ -468,9 +415,7 @@
 
     function copyLink() {
         const link = document.getElementById('share-link').textContent;
-        navigator.clipboard.writeText(link).then(() => {
-            showToast('Odkaz zkopírován!');
-        });
+        navigator.clipboard.writeText(link).then(() => showToast('Odkaz zkopírován!'));
     }
     
     function showToast(msg) {
@@ -502,53 +447,54 @@
         document.getElementById('main-menu').classList.add('hidden');
         document.getElementById('host-panel').classList.remove('hidden');
         
-        updateConnectionStatus('connecting', 'Vytvářím hru...');
+        updateConnectionStatus('connecting', 'Připojuji k serveru...');
         
-        const config = getPeerConfig(useRelayOnly);
-        peer = new Peer(config);
+        // ⚠️ VLASTNÍ SERVER - změň SERVER_URL nahoře!
+        peer = new Peer({
+            host: SERVER_URL,
+            port: 443,
+            secure: true,
+            path: '/',
+            debug: 2
+        });
         
         peer.on('open', id => {
             myId = id;
+            updateConnectionStatus('connected', 'Server připojen!');
             const url = window.location.href.split('?')[0] + '?join=' + id;
             document.getElementById('share-link').textContent = url;
             document.getElementById('peer-id').textContent = id;
-            updateConnectionStatus('connected', 'Hra vytvořena!');
         });
         
         peer.on('connection', connection => {
             if (conn) return;
-            console.log("Host: Přišlo připojení od:", connection.peer);
-            
+            console.log("Host: Připojení od:", connection.peer);
             conn = connection;
             setupConnection();
         });
         
         peer.on('error', err => {
-            console.error("PeerJS error:", err);
-            if (err.type === 'unavailable-id') {
-                alert('Chyba: ID je nedostupné. Zkus obnovit stránku.');
-            } else if (err.type === 'network') {
-                alert('Chyba sítě. Zkontroluj internetové připojení.');
-            } else {
-                alert('Chyba: ' + err.message);
-            }
+            console.error("Chyba:", err);
+            updateConnectionStatus('error', 'Chyba serveru');
+            alert('Chyba: ' + err.message + '\n\nZkontroluj že máš správně nastavený SERVER_URL v kódu!');
             backToMenu();
-        });
-        
-        peer.on('disconnected', () => {
-            updateConnectionStatus('error', 'Odpojeno od serveru');
-            showToast('Varování: Ztraceno spojení se signaling serverem');
         });
     }
 
-    function joinGame(id, forceRelay = false) {
+    function joinGame(id) {
         if (!id) return;
         
         document.getElementById('join-error').textContent = "Připojování...";
-        updateConnectionStatus('connecting', 'Připojování...');
+        updateConnectionStatus('connecting', 'Připojuji k serveru...');
         
-        const config = getPeerConfig(forceRelay);
-        peer = new Peer(config);
+        // ⚠️ VLASTNÍ SERVER - změň SERVER_URL nahoře!
+        peer = new Peer({
+            host: SERVER_URL,
+            port: 443,
+            secure: true,
+            path: '/',
+            debug: 2
+        });
         
         peer.on('open', () => {
             console.log("Guest: Moje ID:", peer.id);
@@ -565,43 +511,20 @@
             });
             
             conn.on('error', (err) => {
-                console.error("Connection error:", err);
-                document.getElementById('join-error').textContent = "Chyba připojení k soupeři.";
+                console.error("Chyba:", err);
+                document.getElementById('join-error').textContent = "Chyba připojení.";
             });
         });
         
         peer.on('error', (err) => {
             console.error("Peer error:", err);
-            if (err.type === 'peer-unavailable') {
-                document.getElementById('join-error').textContent = "Hra nenalezena. Zkontroluj ID.";
-            } else {
-                document.getElementById('join-error').textContent = "Chyba: " + err.message;
-            }
+            document.getElementById('join-error').textContent = "Chyba: " + err.message;
         });
-        
-        // Timeout pro připojení
-        setTimeout(() => {
-            if (!conn || !conn.open) {
-                document.getElementById('join-error').textContent = "Připojení trvá dlouho... Zkus Záložní režim ↓";
-            }
-        }, 5000);
-    }
-
-    // Záložní režim - vynutí použití TURN serveru
-    function joinWithRelay() {
-        const id = document.getElementById('join-code').value.trim();
-        if (!id) return;
-        
-        useRelayOnly = true;
-        joinGame(id, true);
-        updateConnectionStatus('relay', 'Záložní režim...');
     }
 
     function setupConnection() {
-        console.log("Setup connection started");
         gameMode = 'mp';
-        
-        updateConnectionStatus('connected', 'Připojeno!');
+        updateConnectionStatus('connected', 'Připojeno k soupeři!');
         
         document.getElementById('menu').classList.add('hidden');
         document.getElementById('game-panel').classList.remove('hidden');
@@ -609,26 +532,11 @@
         document.getElementById('mp-stats').classList.remove('hidden');
         document.getElementById('history-panel').classList.add('hidden');
         
-        // Monitorování stavu připojení
         conn.on('data', handleMPData);
-        
         conn.on('close', () => {
-            console.log("Connection closed");
             if (gameMode === 'mp') {
                 alert("Soupeř se odpojil!");
                 backToMenu();
-            }
-        });
-        
-        conn.peerConnection.addEventListener('iceconnectionstatechange', () => {
-            const state = conn.peerConnection.iceConnectionState;
-            console.log("ICE state:", state);
-            
-            if (state === 'disconnected' || state === 'failed') {
-                updateConnectionStatus('error', 'Problém s připojením');
-                showToast('Varování: Problém s připojením. Pokud se nepodaří obnovit, zkuste novou hru.');
-            } else if (state === 'connected' || state === 'completed') {
-                updateConnectionStatus('connected', 'Spojení stabilní');
             }
         });
         
@@ -643,22 +551,14 @@
 
     function resetMPState() {
         mpState = {
-            round: 1, 
-            yourScore: 0, 
-            oppScore: 0, 
-            finished: false,
-            waitingForNextRound: false,
-            processingResult: false,
-            hostOut: false,
-            guestOut: false
+            round: 1, yourScore: 0, oppScore: 0, 
+            finished: false, waitingForNextRound: false,
+            processingResult: false, hostOut: false, guestOut: false
         };
-        connectionRetryCount = 0;
     }
 
     function handleMPData(data) {
         if (!data || !data.type) return;
-        
-        console.log("Received:", data.type);
         
         if (data.type === 'newRound') {
             const country = countries.find(c => c[0] === data.country[0]);
@@ -692,7 +592,6 @@
         } else if (data.type === 'roundResult') {
             if (mpState.processingResult) return;
             mpState.processingResult = true;
-            
             mpState.finished = true;
             mpState.waitingForNextRound = true;
             setInputEnabled(false);
@@ -710,29 +609,21 @@
             }
             
             updateMPUI();
-            
             startCountdown(5, () => {
-                if (isHost && data.nextRound) {
-                    startNewRound();
-                }
+                if (isHost && data.nextRound) startNewRound();
             });
             
         } else if (data.type === 'guessedCorrect') {
             if (isHost && !mpState.finished && !mpState.processingResult) {
                 resolveRound('guest');
             }
-            
         } else if (data.type === 'rematch') {
             if (data.from !== myId) {
                 resetMPState();
                 document.getElementById('game-over').classList.remove('show');
-                if (isHost) {
-                    setTimeout(() => startNewRound(), 500);
-                } else {
-                    document.getElementById('hint').textContent = "Čekání na novou hru...";
-                }
+                if (isHost) setTimeout(() => startNewRound(), 500);
+                else document.getElementById('hint').textContent = "Čekání na novou hru...";
             }
-            
         } else if (data.type === 'gameEnd') {
             const msg = data.winner === 'draw' ? "Remíza!" : (data.winner === (isHost ? 'host' : 'guest') ? "Vyhrál jsi!" : "Prohrál jsi");
             showGameOver(`${mpState.yourScore} : ${mpState.oppScore}`, msg, true);
@@ -773,13 +664,8 @@
         mpState.hostOut = false;
         mpState.guestOut = false;
         
-        console.log("Sending newRound to peer");
         if (conn && conn.open) {
-            conn.send({
-                type: 'newRound',
-                round: mpState.round,
-                country: currentCountry
-            });
+            conn.send({ type: 'newRound', round: mpState.round, country: currentCountry });
         }
         
         updateMPUI();
@@ -805,14 +691,10 @@
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             crossOrigin: true
-        }).on('tileerror', function() {
-            hideMapLoader();
         }).addTo(map);
 
         setTimeout(hideMapLoader, 2000);
-        map.whenReady(() => {
-            setTimeout(hideMapLoader, 500);
-        });
+        map.whenReady(() => setTimeout(hideMapLoader, 500));
     }
 
     function startSingle() {
@@ -826,8 +708,7 @@
         document.getElementById('history-panel').classList.remove('hidden');
         document.getElementById('game-over').classList.remove('show');
         
-        score = 0;
-        streak = 0;
+        score = 0; streak = 0;
         document.getElementById('score').textContent = '0';
         document.getElementById('streak').textContent = '0';
         
@@ -853,14 +734,12 @@
             panel.innerHTML = '<span style="color:#999;font-size:12px;">Historie se zobrazí zde...</span>';
             return;
         }
-        
         panel.innerHTML = singleHistory.map(item => `
             <div class="history-item ${item.success ? 'correct' : 'wrong'}">
                 <div class="history-flag">🌍</div>
                 <div>${item.country}</div>
             </div>
         `).join('');
-        
         panel.scrollLeft = panel.scrollWidth;
     }
 
@@ -882,11 +761,8 @@
         const alternatives = currentCountry[3].map(normalize);
         const correct = normInput === normCorrect || alternatives.includes(normInput);
 
-        if (correct) {
-            handleCorrect();
-        } else {
-            handleWrong();
-        }
+        if (correct) handleCorrect();
+        else handleWrong();
     }
 
     function handleCorrect() {
@@ -894,8 +770,7 @@
         
         if (gameMode === 'single') {
             const points = Math.floor(50 / (attempts + 1));
-            score += points;
-            streak++;
+            score += points; streak++;
             document.getElementById('score').textContent = score;
             document.getElementById('streak').textContent = streak;
             document.getElementById('hint').innerHTML = `<span class="success">✓ ${currentCountry[0]}! +${points}b</span>`;
@@ -904,24 +779,13 @@
             setTimeout(nextSingleRound, 2000);
         } else {
             if (mpState.finished || mpState.processingResult) return;
-            
             mpState.finished = true;
             setInputEnabled(false);
             
-            console.log("Sending guessedCorrect");
-            if (conn && conn.open) {
-                conn.send({
-                    type: 'guessedCorrect',
-                    who: myId,
-                    isHost: isHost
-                });
-            }
+            if (conn && conn.open) conn.send({ type: 'guessedCorrect', who: myId, isHost: isHost });
             
-            if (isHost) {
-                resolveRound('host');
-            } else {
-                document.getElementById('hint').innerHTML = `<span class="waiting">Čekání na potvrzení...</span>`;
-            }
+            if (isHost) resolveRound('host');
+            else document.getElementById('hint').innerHTML = `<span class="waiting">Čekání na potvrzení...</span>`;
         }
     }
 
@@ -941,16 +805,12 @@
             } else {
                 map.setView([currentCountry[1], currentCountry[2]], zoomLevels[attempts]);
                 updateHint();
-                input.value = '';
-                input.focus();
+                input.value = ''; input.focus();
             }
         } else {
             if (attempts >= maxAttempts) {
                 setInputEnabled(false);
-                
-                if (conn && conn.open) {
-                    conn.send({type: 'outOfAttempts'});
-                }
+                if (conn && conn.open) conn.send({type: 'outOfAttempts'});
                 
                 if (isHost) {
                     mpState.hostOut = true;
@@ -961,9 +821,7 @@
                     document.getElementById('hint').innerHTML = `<span class="waiting">Došly pokusy! Čekání na výsledek...</span>`;
                 }
             } else {
-                if (conn && conn.open) {
-                    conn.send({type: 'guess', attempt: attempts});
-                }
+                if (conn && conn.open) conn.send({type: 'guess', attempt: attempts});
                 map.setView([currentCountry[1], currentCountry[2]], zoomLevels[attempts]);
                 updateHint();
                 input.value = '';
@@ -973,27 +831,19 @@
 
     function resolveRound(winner) {
         if (!isHost || mpState.processingResult) return;
-        console.log("Resolving round:", winner);
         mpState.processingResult = true;
         
         if (winner === 'host') mpState.yourScore++;
         else if (winner === 'guest') mpState.oppScore++;
         
         if (conn && conn.open) {
-            conn.send({
-                type: 'roundResult',
-                winner: winner,
-                nextRound: mpState.round < 5,
-                countryName: currentCountry[0]
-            });
+            conn.send({ type: 'roundResult', winner: winner, nextRound: mpState.round < 5, countryName: currentCountry[0] });
         }
         
         updateMPUI();
-        
         startCountdown(5, () => {
-            if (mpState.round >= 5) {
-                endGame();
-            } else {
+            if (mpState.round >= 5) endGame();
+            else {
                 mpState.round++;
                 startNewRound();
             }
@@ -1006,9 +856,7 @@
         else if (mpState.yourScore < mpState.oppScore) winner = isHost ? 'guest' : 'host';
         else winner = 'draw';
         
-        if (conn && conn.open) {
-            conn.send({type: 'gameEnd', winner: winner});
-        }
+        if (conn && conn.open) conn.send({type: 'gameEnd', winner: winner});
         
         const msg = winner === 'draw' ? "Remíza!" : (winner === (isHost ? 'host' : 'guest') ? "Vyhrál jsi! 🎉" : "Prohrál jsi 😢");
         showGameOver(`${mpState.yourScore} : ${mpState.oppScore}`, msg, true);
@@ -1022,31 +870,21 @@
     }
 
     function rematch() {
-        if (gameMode === 'mp' && conn && conn.open) {
-            conn.send({type: 'rematch', from: myId});
-        }
+        if (gameMode === 'mp' && conn && conn.open) conn.send({type: 'rematch', from: myId});
         
-        if (gameMode === 'single') {
-            startSingle();
-        } else if (gameMode === 'mp') {
+        if (gameMode === 'single') startSingle();
+        else if (gameMode === 'mp') {
             resetMPState();
             document.getElementById('game-over').classList.remove('show');
-            if (isHost) {
-                startNewRound();
-            } else {
-                document.getElementById('hint').textContent = "Čekání na hosta...";
-            }
+            if (isHost) startNewRound();
+            else document.getElementById('hint').textContent = "Čekání na hosta...";
         }
     }
 
     function backToMenu() {
         if (conn) conn.close();
         if (peer) peer.destroy();
-        conn = null;
-        peer = null;
-        gameMode = null;
-        singleHistory = [];
-        useRelayOnly = false;
+        conn = null; peer = null; gameMode = null; singleHistory = [];
         
         document.getElementById('game-panel').classList.add('hidden');
         document.getElementById('menu').classList.remove('hidden');
@@ -1055,10 +893,7 @@
         document.getElementById('main-menu').classList.remove('hidden');
         document.getElementById('game-over').classList.remove('show');
         
-        if (map) {
-            map.remove();
-            map = null;
-        }
+        if (map) { map.remove(); map = null; }
     }
 
     function updateHint() {
@@ -1079,11 +914,9 @@
         const val = e.target.value;
         const list = document.getElementById('autocomplete-list');
         list.innerHTML = '';
-        
         if (!val) { list.classList.remove('active'); return; }
         
         const matches = countries.filter(c => normalize(c[0]).includes(normalize(val))).slice(0, 5);
-        
         matches.forEach(c => {
             const div = document.createElement('div');
             div.className = 'autocomplete-item';
@@ -1095,7 +928,6 @@
             };
             list.appendChild(div);
         });
-        
         list.classList.toggle('active', matches.length > 0);
     });
 
