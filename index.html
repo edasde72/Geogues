@@ -215,7 +215,7 @@
 <div id="game-container">
     <div id="menu" class="controls" style="flex: 1; display: flex; flex-direction: column; justify-content: center;">
         <h1>🌍 GeoGuessr</h1>
-        <p style="margin-bottom: 20px; color: #666;">Hádej zemu podle mapy!</p>
+        <p style="margin-bottom: 20px; color: #666;">Hádej zemi podle mapy!</p>
         
         <div class="menu" id="main-menu">
             <button class="menu-btn single" onclick="startSingle()">👤 Single Player</button>
@@ -226,8 +226,8 @@
         <div id="host-panel" class="hidden" style="margin-top: 20px;">
             <p><b>Tvůj server je aktivní!</b></p>
             <div class="server-info">
-                🟢 Připojeno k: <b>https://geogues.onrender.com</b><br>
-                <small>(Změň v kódu na tvou adresu z Render)</small>
+                🟢 Server: <b>https://geoguessr-server.onrender.com</b><br>
+                <small>(Změň v kódu na tvou adresu z Render!)</small>
             </div>
             <p><b>Pošli tento odkaz kamarádovi:</b></p>
             <div class="code-box" id="share-link">Načítání...</div>
@@ -276,7 +276,7 @@
 
             <div class="input-wrapper">
                 <div class="input-group">
-                    <input type="text" id="guessInput" placeholder="Napiš zemu..." autocomplete="off" disabled>
+                    <input type="text" id="guessInput" placeholder="Napiš zemi..." autocomplete="off" disabled>
                     <button onclick="makeGuess()" id="guessBtn" disabled>Hádat</button>
                 </div>
                 <div id="autocomplete-list" class="autocomplete-items"></div>
@@ -290,8 +290,9 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-    // ⚠️ DŮLEŽITÉ: Změň na adresu svého serveru z Render!
-    const SERVER_URL = 'TVUJ_SERVER.onrender.com'; // Např.: 'geogues-xyz.onrender.com'
+    // ⚠️ ZMĚŇ TOTO na adresu svého serveru z Render!
+    // Například: 'geoguessr-server-abc123.onrender.com'
+    const SERVER_URL = 'TVUJ_SERVER.onrender.com';
     
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     
@@ -449,7 +450,6 @@
         
         updateConnectionStatus('connecting', 'Připojuji k serveru...');
         
-        // ⚠️ VLASTNÍ SERVER - změň SERVER_URL nahoře!
         peer = new Peer({
             host: SERVER_URL,
             port: 443,
@@ -476,7 +476,11 @@
         peer.on('error', err => {
             console.error("Chyba:", err);
             updateConnectionStatus('error', 'Chyba serveru');
-            alert('Chyba: ' + err.message + '\n\nZkontroluj že máš správně nastavený SERVER_URL v kódu!');
+            if (SERVER_URL === 'TVUJ_SERVER.onrender.com') {
+                alert('Chyba: Zapomněl jsi změnit SERVER_URL v kódu!\n\nOtevři kód a na řádku 12 změň "TVUJ_SERVER.onrender.com" na tvou adresu z Render.');
+            } else {
+                alert('Chyba: ' + err.message);
+            }
             backToMenu();
         });
     }
@@ -487,7 +491,6 @@
         document.getElementById('join-error').textContent = "Připojování...";
         updateConnectionStatus('connecting', 'Připojuji k serveru...');
         
-        // ⚠️ VLASTNÍ SERVER - změň SERVER_URL nahoře!
         peer = new Peer({
             host: SERVER_URL,
             port: 443,
@@ -518,7 +521,11 @@
         
         peer.on('error', (err) => {
             console.error("Peer error:", err);
-            document.getElementById('join-error').textContent = "Chyba: " + err.message;
+            if (SERVER_URL === 'TVUJ_SERVER.onrender.com') {
+                document.getElementById('join-error').textContent = "Chyba: Změň SERVER_URL v kódu!";
+            } else {
+                document.getElementById('join-error').textContent = "Chyba: " + err.message;
+            }
         });
     }
 
@@ -941,5 +948,7 @@
         }
     });
 </script>
+</body>
+</html>
 </body>
 </html>
